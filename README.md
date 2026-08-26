@@ -1,948 +1,700 @@
-# 🛡️ API Rate Limiter
+# 📦 StockFlow
 
-A full-stack **MERN-based API Rate Limiting System** designed to protect APIs from excessive traffic, accidental traffic spikes, and misuse.
+A full-stack **Inventory Management System** built with **React + Vite** on the frontend and **ASP.NET Core Web API + Entity Framework Core + SQL Server** on the backend.
 
-The system provides configurable rate-limit rules based on **IP address, domain, and authenticated user**, using a **Sliding Window Counter** algorithm backed by MongoDB. It includes an admin dashboard for managing rules, monitoring breaches, viewing notifications, and testing API traffic in real time.
+StockFlow is designed to demonstrate practical backend and full-stack development concepts such as **JWT authentication, role-based authorization, layered architecture, inventory validation, atomic stock operations, audit logging, database constraints, dependency injection, and RESTful API design**.
 
 ---
 
 ## 🚀 Features
 
-* 🔐 **JWT-Based User Identification**
+### 🔐 Authentication & Authorization
 
-  * Supports `Authorization: Bearer <JWT>`
-  * JWT verification and decoding
-  * Extracts identity from `userId`, `id`, `sub`, or `email` claims
-  * `X-User-Id` supported as a fallback/testing mechanism
-  * Built-in JWT token generation and verification endpoints
+- JWT-based stateless authentication
+- BCrypt password hashing
+- Role-based access control with **Admin** and **Employee** roles
+- Backend authorization using `[Authorize]`
+- Admin-only operations protected at the API level
+- JWT stored and attached to requests by Axios on the frontend
+- Unauthorized actions return appropriate `401` / `403` responses
 
-* ⚡ **Sliding Window Counter**
+### 📦 Product Management
 
-  * More accurate than a fixed-window approach
-  * Reduces burst problems around time-window boundaries
-  * Uses weighted previous/current window counts
-  * Low storage overhead
+- Create, view, update, and delete products
+- Unique SKU validation
+- Product search
+- Pagination
+- Minimum stock level configuration
 
-* 🎯 **Multiple Identity Types**
+### 🏢 Warehouse Management
 
-  * IP Address
-  * Domain
-  * Signed-in User / Customer
+- Create, view, update, and delete warehouses
+- Store warehouse location details
+- Manage inventory across multiple warehouses
 
-* ⏱️ **Flexible Time Periods**
+### 📊 Inventory Management
 
-  * Per Minute
-  * Per Hour
-  * Per Day
+- View current inventory levels
+- Stock-in operations
+- Stock-out operations
+- Prevent stock from becoming negative
+- Low-stock detection based on minimum stock level
+- Track inventory separately for each product and warehouse
 
-* ⚙️ **Configurable Rules**
+### 📝 Stock Movement History
 
-  * Create, read, update, and delete rules
-  * Activate/deactivate rules without deleting them
-  * Multiple rules can apply simultaneously
+- Record every stock-in and stock-out operation
+- Store product, warehouse, user, quantity, movement type, and timestamp
+- Preserve historical movement records using restricted delete behavior
 
-* 🚫 **HTTP 429 Enforcement**
+### 🛡️ Backend Reliability
 
-  * Requests exceeding a configured limit receive `429 Too Many Requests`
-  * Includes a `Retry-After` header
+- Custom global exception handling middleware
+- Dependency Injection
+- EF Core migrations and database seeding
+- LINQ-based database queries
+- SQL Server constraints and indexes
+- Consistent API error responses
+- Built-in logging using `ILogger`
 
-* 🔔 **Breach Notifications**
+### 📚 API Documentation
 
-  * In-app notifications
-  * Optional email notifications using SMTP/Nodemailer
-  * 5-minute duplicate notification cooldown
-
-* 📊 **Admin Dashboard**
-
-  * Active rule statistics
-  * Request statistics
-  * Breach activity
-  * Rule management
-  * Breach logs
-  * Notification center
-
-* 🧪 **Interactive API Tester**
-
-  * Send configurable request volumes
-  * Configure concurrency
-  * Test IP, domain, and user-based rules
-  * Generate JWTs directly from the dashboard
-  * Observe successful and rate-limited requests in real time
-
-* 🧵 **Concurrency-Safe Counters**
-
-  * Atomic MongoDB updates using `findOneAndUpdate` and `$inc`
-
-* 🗑️ **Automatic Counter Cleanup**
-
-  * MongoDB TTL indexes automatically remove expired counter documents
-
-* 🧪 **Automated Testing**
-
-  * Unit and integration tests using Jest and Supertest
-  * 65 automated backend tests across four test suites
+- Swagger / OpenAPI integration
+- Interactive API testing through Swagger UI
+- Clearly separated REST endpoints for authentication, products, warehouses, inventory, and stock movements
 
 ---
 
 ## 🏗️ Architecture
 
 ```text
-                         ┌──────────────────────┐
-                         │       Client         │
-                         │   React Dashboard    │
-                         └──────────┬───────────┘
-                                    │
-                                    │ REST API
-                                    ▼
-                     ┌─────────────────────────────┐
-                     │       Express.js Server     │
-                     │                             │
-                     │  CORS / Helmet / JSON       │
-                     │            │                │
-                     │            ▼                │
-                     │     Rate Limiter            │
-                     │      Middleware             │
-                     │            │                │
-                     └────────────┼────────────────┘
+                         ┌───────────────────────┐
+                         │      React Client     │
+                         │     Vite + Axios      │
+                         └───────────┬───────────┘
+                                     │
+                           HTTP + JWT Bearer
+                                     │
+                                     ▼
+                    ┌─────────────────────────────┐
+                    │     ASP.NET Core Web API    │
+                    │                             │
+                    │  CORS / Exception Middleware│
+                    │             │               │
+                    │             ▼               │
+                    │       Controllers           │
+                    │             │               │
+                    │             ▼               │
+                    │        Services             │
+                    │     Business Logic          │
+                    │             │               │
+                    │             ▼               │
+                    │        EF Core              │
+                    │         DbContext            │
+                    └─────────────┬───────────────┘
                                   │
-                    ┌─────────────┴─────────────┐
-                    │                           │
-                    ▼                           ▼
-             ┌──────────────┐         ┌──────────────────┐
-             │   MongoDB    │         │ Notification     │
-             │              │         │ Service          │
-             │ Rules        │         │                  │
-             │ Counters     │         │ In-App + Email   │
-             │ Breaches     │         └──────────────────┘
-             │ Notifications│
-             └──────────────┘
+                                  ▼
+                            ┌─────────────┐
+                            │  SQL Server │
+                            │ StockFlowDb │
+                            └─────────────┘
 ```
 
-### Request Flow
+### 🔄 Request Flow
 
 ```text
-Incoming Request
-       │
-       ▼
-Express Middleware
-       │
-       ▼
-Extract Identity
-       │
-       ├── IP → req.ip
-       ├── Domain → X-Domain / Origin
-       └── User → JWT / req.user / X-User-Id
-       │
-       ▼
-Find Active Rules
-       │
-       ▼
-Calculate Sliding Window Count
-       │
-       ▼
-Atomic MongoDB Counter Update
-       │
-       ├─────────────── Under Limit ──────────────► Route Handler
-       │
-       └─────────────── Over Limit ───────────────► HTTP 429
-                                                       │
-                                                       ▼
-                                                Breach Log
-                                                       │
-                                                       ▼
-                                                 Notification
+Client Request
+     │
+     ▼
+Axios
+     │
+     ▼
+JWT Bearer Token
+     │
+     ▼
+ASP.NET Core Middleware
+     │
+     ├── Exception Handling
+     └── CORS
+     │
+     ▼
+Controller
+     │
+     ├── Authentication / Authorization
+     └── Request Validation
+     │
+     ▼
+Service Layer
+     │
+     ├── Business Rules
+     ├── Inventory Validation
+     ├── LINQ Queries
+     └── Stock Movement Logging
+     │
+     ▼
+EF Core DbContext
+     │
+     ▼
+SQL Server
 ```
 
 ---
 
-## 🔐 JWT Authentication Flow
+## 🛠️ Technology Stack
 
-Authenticated user rate limiting uses JWTs to identify customers.
-
-```text
-Client
-  │
-  │ Authorization: Bearer <JWT>
-  ▼
-Express Server
-  │
-  ▼
-JWT Verification
-  │
-  ▼
-Decode JWT Claims
-  │
-  ▼
-Extract User Identity
-  │
-  ▼
-Rate Limiter
-  │
-  ▼
-MongoDB Counter
-```
-
-For example, a JWT can contain:
-
-```json
-{
-  "userId": "cust_vip_42"
-}
-```
-
-The rate limiter uses:
-
-```text
-identityType  = user
-identityValue = cust_vip_42
-```
-
-The counter is therefore maintained separately for that authenticated user.
-
-### Supported User Identity Sources
-
-| Source      | Example                         |
-| ----------- | ------------------------------- |
-| JWT         | `Authorization: Bearer <token>` |
-| `req.user`  | Authenticated user object       |
-| `X-User-Id` | `X-User-Id: cust_vip_42`        |
-
-JWT claims supported by the implementation include:
-
-```text
-userId
-id
-sub
-email
-```
-
-### Authentication Endpoints
-
-| Method | Endpoint           | Description                           |
-| ------ | ------------------ | ------------------------------------- |
-| `POST` | `/api/auth/token`  | Generate a signed JWT for testing     |
-| `POST` | `/api/auth/verify` | Verify a JWT and inspect its identity |
-
-The Test API page also provides a **Generate JWT** button so different user identities can be simulated without implementing a complete login system.
-
-> **Note:** The JWT generator is intended for testing/demo authentication. In a production application, token issuance would normally be connected to a proper authentication and user-management system.
+| Layer | Technology |
+|---|---|
+| Frontend | React |
+| Build Tool | Vite |
+| Frontend Language | JavaScript ES6+ |
+| Routing | React Router DOM |
+| HTTP Client | Axios |
+| Styling | Vanilla CSS |
+| Backend | ASP.NET Core Web API |
+| Language | C# |
+| Framework | .NET 8 |
+| ORM | Entity Framework Core 8 |
+| Database | Microsoft SQL Server |
+| Authentication | JWT Bearer |
+| Password Hashing | BCrypt.Net-Next |
+| API Documentation | Swagger / OpenAPI |
+| Logging | `ILogger` |
 
 ---
 
-## ⚡ Rate Limiting Algorithm
+## 🗄️ Database Design
 
-This project uses a **Sliding Window Counter** algorithm.
+StockFlow uses **five main tables** in SQL Server.
 
-### Why Sliding Window Counter?
+```mermaid
+erDiagram
 
-| Algorithm                  | Advantage                   | Limitation                     | Decision |
-| -------------------------- | --------------------------- | ------------------------------ | -------- |
-| Fixed Window               | Simple                      | Burst at window boundaries     | ❌        |
-| Sliding Window Log         | Very accurate               | Stores every request timestamp | ❌        |
-| Token Bucket               | Smooth traffic control      | More complex state management  | ❌        |
-| **Sliding Window Counter** | Good accuracy + low storage | Slight approximation           | ✅        |
+    Users {
+        int Id PK
+        string Username UK
+        string Email UK
+        string PasswordHash
+        string Role
+        datetime CreatedAt
+    }
 
-The algorithm combines the previous window's counter with the current window's counter using an overlap ratio.
+    Products {
+        int Id PK
+        string Name
+        string SKU UK
+        string Description
+        decimal Price
+        int MinimumStockLevel
+        datetime CreatedAt
+        datetime UpdatedAt
+    }
 
-```text
-weightedCount =
-    (previousCount × overlapRatio)
-    + currentCount
+    Warehouses {
+        int Id PK
+        string Name
+        string Location
+        datetime CreatedAt
+    }
+
+    Inventory {
+        int Id PK
+        int ProductId FK
+        int WarehouseId FK
+        int Quantity
+        datetime LastUpdated
+    }
+
+    StockMovements {
+        int Id PK
+        int ProductId FK
+        int WarehouseId FK
+        int UserId FK
+        int MovementType
+        int Quantity
+        datetime CreatedAt
+    }
+
+    Users ||--o{ StockMovements : records
+    Products ||--o{ Inventory : stores
+    Products ||--o{ StockMovements : traces
+    Warehouses ||--o{ Inventory : houses
+    Warehouses ||--o{ StockMovements : logs
 ```
 
-Where:
+### 🔑 Database Constraints
 
-```text
-overlapRatio =
-    1 - (elapsedTimeInCurrentWindow / windowDuration)
-```
+- **Unique indexes**
+  - `Users.Username`
+  - `Users.Email`
+  - `Products.SKU`
 
-This allows the system to approximate a true sliding window without storing every individual request timestamp.
+- **Composite unique constraint**
+  - `Inventory(ProductId, WarehouseId)`
+  - Ensures one inventory record exists for a product within a warehouse.
+
+- **Historical integrity**
+  - `StockMovements` uses restricted deletion behavior so historical records are not accidentally orphaned.
 
 ---
 
-## 🗄️ MongoDB Counter Design
+## 🔐 Authentication & RBAC
 
-A rate-limit counter contains information similar to:
+StockFlow uses **JWT (JSON Web Tokens)** for authentication.
 
-```json
-{
-  "ruleId": "ObjectId",
-  "identityValue": "192.168.1.1",
-  "windowStart": "2026-08-16T15:30:00Z",
-  "count": 42,
-  "expiresAt": "2026-08-16T15:32:00Z"
-}
+### Authentication Flow
+
+```text
+Login
+  │
+  ▼
+Validate Username + Password
+  │
+  ▼
+Verify BCrypt Password Hash
+  │
+  ▼
+Generate JWT
+  │
+  ▼
+Return Token + Username + Role
+  │
+  ▼
+Frontend Stores Authentication Data
+  │
+  ▼
+Axios Sends:
+Authorization: Bearer <token>
 ```
 
-### Database Optimizations
+### 👥 Role Authorization Matrix
 
-* **Compound index**
+| Action | Admin | Employee |
+|---|:---:|:---:|
+| Login | ✅ | ✅ |
+| View Products | ✅ | ✅ |
+| Create / Edit / Delete Products | ✅ | ❌ |
+| View Warehouses | ✅ | ✅ |
+| Create / Edit / Delete Warehouses | ✅ | ❌ |
+| View Inventory | ✅ | ✅ |
+| Stock In | ✅ | ✅ |
+| Stock Out | ✅ | ✅ |
+| View Stock Movement History | ✅ | ✅ |
+| Create User Accounts | ✅ | ❌ |
 
-  * `ruleId`
-  * `identityValue`
-  * `windowStart`
-
-* **TTL index**
-
-  * Automatically removes expired counter documents
-
-* **Atomic increment**
-
-  * Uses `findOneAndUpdate`
-  * Uses `$inc`
-  * Prevents race conditions during concurrent requests
+> **Important:** Frontend role checks only control the UI. The backend remains the final authority for authorization.
 
 ---
 
-## 🎯 Supported Rate-Limit Rules
+## 📡 API Endpoints
 
-The system supports three identity types:
+### 🔑 Authentication
+
+| Method | Endpoint | Authorization | Description |
+|---|---|---|---|
+| `POST` | `/api/auth/login` | Public | Validate credentials and return JWT |
+
+### 👤 Users
+
+| Method | Endpoint | Authorization | Description |
+|---|---|---|---|
+| `POST` | `/api/users` | Admin | Create a new user |
+
+### 📦 Products
+
+| Method | Endpoint | Authorization | Description |
+|---|---|---|---|
+| `GET` | `/api/products` | All Users | Get products with search and pagination |
+| `GET` | `/api/products/{id}` | All Users | Get product by ID |
+| `POST` | `/api/products` | Admin | Create a product |
+| `PUT` | `/api/products/{id}` | Admin | Update a product |
+| `DELETE` | `/api/products/{id}` | Admin | Delete a product |
+
+Example search:
 
 ```text
-IP Address
-Domain
-Signed-in User / Customer
+GET /api/products?search=mouse
 ```
 
-and three time periods:
+### 🏢 Warehouses
 
-```text
-Per Minute
-Per Hour
-Per Day
-```
+| Method | Endpoint | Authorization | Description |
+|---|---|---|---|
+| `GET` | `/api/warehouses` | All Users | Get all warehouses |
+| `GET` | `/api/warehouses/{id}` | All Users | Get warehouse by ID |
+| `POST` | `/api/warehouses` | Admin | Create a warehouse |
+| `PUT` | `/api/warehouses/{id}` | Admin | Update a warehouse |
+| `DELETE` | `/api/warehouses/{id}` | Admin | Delete a warehouse |
 
-### Default Rules
+### 📊 Inventory
 
-The application provides 15 predefined rules:
+| Method | Endpoint | Authorization | Description |
+|---|---|---|---|
+| `GET` | `/api/inventory` | All Users | Get current inventory |
+| `GET` | `/api/inventory/low-stock` | All Users | Get low-stock products |
+| `POST` | `/api/inventory/stock-in` | All Users | Add stock and record movement |
+| `POST` | `/api/inventory/stock-out` | All Users | Remove stock after validation |
 
-| Rule                          | Identity | Period |   Limit |
-| ----------------------------- | -------- | -----: | ------: |
-| IP Strict Burst Limit         | IP       | Minute |      15 |
-| IP Standard Rate              | IP       | Minute |      60 |
-| IP Standard Hourly Quota      | IP       |   Hour |   1,000 |
-| IP High-Volume Hourly         | IP       |   Hour |   3,000 |
-| IP Daily Maximum Cap          | IP       |    Day |  15,000 |
-| Domain Webhook Burst Limit    | Domain   | Minute |      50 |
-| Domain Standard Traffic       | Domain   | Minute |     200 |
-| Domain Partner Hourly Quota   | Domain   |   Hour |   5,000 |
-| Domain Enterprise Hourly      | Domain   |   Hour |  20,000 |
-| Domain Daily Aggregation Cap  | Domain   |    Day | 100,000 |
-| Customer Free Tier Rate       | User     | Minute |      30 |
-| Customer Pro Tier Rate        | User     | Minute |     150 |
-| Customer Basic Hourly Limit   | User     |   Hour |   1,500 |
-| Customer Premium Hourly Limit | User     |   Hour |  10,000 |
-| Customer Fair Use Daily Cap   | User     |    Day |  50,000 |
+### 📝 Stock Movement History
 
-These rules are configurable through the admin dashboard.
+| Method | Endpoint | Authorization | Description |
+|---|---|---|---|
+| `GET` | `/api/stock-movements` | All Users | Get stock movement history |
 
 ---
 
-## 🚫 Rate Limit Enforcement
+## ⚙️ Stock Operations
 
-When an incoming request is processed:
-
-1. The system extracts the request identity.
-2. Active rules applicable to that identity are retrieved.
-3. The relevant MongoDB counters are updated atomically.
-4. The sliding-window count is evaluated.
-5. If all limits are satisfied, the request continues.
-6. If any limit is exceeded, the request is rejected.
-
-Example:
+### 📥 Stock In
 
 ```text
-Limit = 5 requests/minute
-
-Request 1 → 200 OK
-Request 2 → 200 OK
-Request 3 → 200 OK
-Request 4 → 200 OK
-Request 5 → 200 OK
-Request 6 → 429 Too Many Requests
+Stock In Request
+      │
+      ▼
+Find Product + Warehouse
+      │
+      ▼
+Increase Inventory Quantity
+      │
+      ▼
+Create StockMovement Record
+      │
+      ▼
+Save Changes
 ```
 
-The rejected response includes:
+### 📤 Stock Out
 
-```http
-HTTP/1.1 429 Too Many Requests
-Retry-After: <seconds>
+StockFlow validates available inventory before removing stock.
+
+```text
+Current Stock = 10
+Requested Stock Out = 15
+
+        ↓
+
+Insufficient Quantity
+
+        ↓
+
+❌ 400 Bad Request
 ```
+
+This prevents negative inventory values.
+
+### 📉 Low-Stock Detection
+
+A product is considered low-stock when:
+
+```text
+Current Quantity <= Minimum Stock Level
+```
+
+Low-stock products are highlighted on the Dashboard and Inventory page.
 
 ---
 
-## 🔔 Breach Notifications
+## 🧾 Stock Movement Audit Trail
 
-When a rate limit is breached, the system creates a breach record and notification.
-
-A notification contains information such as:
+Every stock operation records:
 
 ```text
-Rule Name
-Identity Type
-Identity Value
-Maximum Requests
-Actual Count
+Product
+Warehouse
+User
+Movement Type
+Quantity
 Timestamp
 ```
 
-### In-App Notifications
-
-Notifications are stored in MongoDB and displayed through the dashboard.
-
-The header contains a notification indicator showing unread notifications.
-
-### Email Notifications
-
-Email notifications can be enabled through SMTP configuration using Nodemailer.
-
-If SMTP is not configured, the system continues operating with in-app notifications.
-
-### Notification Deduplication
-
-Repeated breaches for the same:
+Example:
 
 ```text
-Rule + Identity
+Employee → Warehouse A → Laptop → STOCK_IN → +20
+Employee → Warehouse A → Laptop → STOCK_OUT → -5
 ```
 
-within a **5-minute cooldown period** do not generate duplicate notifications.
+This provides a basic audit history of inventory changes.
 
 ---
 
-## 📊 Admin Dashboard
+## 🛡️ Global Exception Handling
 
-The dashboard provides:
-
-### Dashboard
-
-* Active rules
-* Total requests processed
-* Breaches today
-* Breach activity visualization
-
-### Rate Limit Rules
-
-* Create rules
-* Edit rules
-* Delete rules
-* Activate/deactivate rules
-* View configured limits
-
-### Breach Logs
-
-* View rate-limit breaches
-* Review identity information
-* Review exceeded limits
-* Filter breach records
-
-### Notifications
-
-* View breach notifications
-* Unread notification count
-* Mark individual notifications as read
-* Mark all notifications as read
-
-### Test API
-
-* Configure request volume
-* Configure concurrency
-* Configure batch delay
-* Test domain identities
-* Test user identities
-* Generate JWTs
-* Send traffic
-* Observe `200` and `429` responses
-
----
-
-## 🧪 Testing
-
-The project includes **65 automated tests** covering rate-limiter behavior, rule CRUD operations, notifications, and helper functions.
-
-| Test Suite             |  Tests |
-| ---------------------- | -----: |
-| `helpers.test.js`      |     17 |
-| `rules.test.js`        |     16 |
-| `rateLimiter.test.js`  |     21 |
-| `notification.test.js` |     11 |
-| **Total**              | **65** |
-
-### Test Coverage Areas
-
-* Requests under the limit
-* Requests exceeding the limit
-* Exact-limit boundaries
-* Multiple simultaneous rules
-* Different identities
-* Inactive rules
-* Window transitions
-* HTTP 429 responses
-* `Retry-After` headers
-* Breach notifications
-* Notification deduplication
-* Email failure handling
-* Rule CRUD operations
-* Invalid rule configurations
-* Concurrent requests
-* Database failure / fail-open behavior
-* Dashboard statistics
-
-The test plan covers positive, negative, boundary, failure, and integration scenarios.
-
-### Run Tests
-
-```bash
-# Run all tests
-npm test
-
-# Run tests with coverage
-npm run test:coverage
-
-# Run rate limiter tests
-cd server
-npx jest tests/rateLimiter.test.js
-```
-
----
-
-## 🛠️ Tech Stack
-
-| Layer               | Technology                       |
-| ------------------- | -------------------------------- |
-| Frontend            | React 18                         |
-| Build Tool          | Vite                             |
-| Routing             | React Router                     |
-| HTTP Client         | Axios                            |
-| Backend             | Node.js                          |
-| Framework           | Express.js                       |
-| Database            | MongoDB                          |
-| ODM                 | Mongoose                         |
-| Authentication      | JSON Web Token                   |
-| Email               | Nodemailer                       |
-| Testing             | Jest                             |
-| API Testing         | Supertest                        |
-| Test Database       | mongodb-memory-server            |
-| Security Middleware | Helmet                           |
-| Development         | Concurrent server/client scripts |
-
-The documented technical stack is Node.js 24, Express.js, MongoDB/Mongoose, React 18/Vite, Nodemailer, Jest, and Supertest.
-
----
-
-## 📋 Prerequisites
-
-Make sure the following are installed:
-
-* Node.js 18+
-* MongoDB
-* npm
-
-Node.js 24 is recommended for this project.
-
-MongoDB should be available locally:
-
-```text
-mongodb://localhost:27017
-```
-
----
-
-## ⚙️ Installation
-
-### 1. Clone the Repository
-
-```bash
-git clone <your-repository-url>
-cd APIRateLimiter
-```
-
-### 2. Install Dependencies
-
-From the project root:
-
-```bash
-npm run install:all
-```
-
-Or install manually:
-
-```bash
-cd server
-npm install
-
-cd ../client
-npm install
-
-cd ..
-npm install
-```
-
-### 3. Configure Environment Variables
-
-Create:
-
-```text
-server/.env
-```
+StockFlow uses custom exception handling middleware to provide consistent API responses.
 
 Example:
 
-```env
-PORT=5000
-MONGODB_URI=mongodb://localhost:27017/rateLimiter
-
-# JWT
-JWT_SECRET=your_secret_key
-
-# Optional SMTP configuration
-SMTP_HOST=
-SMTP_PORT=587
-SMTP_USER=
-SMTP_PASS=
-ADMIN_EMAIL=admin@example.com
+```json
+{
+  "success": false,
+  "message": "An unexpected error occurred."
+}
 ```
 
-> Never commit your real `.env` file or JWT secret to GitHub. Use `.env.example` for public configuration templates.
-
-### 4. Start the Application
-
-Run both frontend and backend:
-
-```bash
-npm run dev
-```
-
-Or start them separately.
-
-Backend:
-
-```bash
-cd server
-npm run dev
-```
-
-Frontend:
-
-```bash
-cd client
-npm run dev
-```
-
-### 5. Open the Dashboard
-
-```text
-http://localhost:3000
-```
+Detailed exception information is logged using `ILogger`, while the client receives a controlled response.
 
 ---
 
-## 🔌 API Endpoints
+## 📚 Swagger API Documentation
 
-### Authentication
+Once the backend is running, open:
 
-| Method | Endpoint           | Description        |
-| ------ | ------------------ | ------------------ |
-| `POST` | `/api/auth/token`  | Generate JWT token |
-| `POST` | `/api/auth/verify` | Verify JWT token   |
+```text
+http://localhost:5045/swagger
+```
 
-### Rate Limit Rules
+Swagger provides an interactive interface for:
 
-| Method   | Endpoint         | Description   |
-| -------- | ---------------- | ------------- |
-| `GET`    | `/api/rules`     | Get all rules |
-| `POST`   | `/api/rules`     | Create a rule |
-| `PUT`    | `/api/rules/:id` | Update a rule |
-| `DELETE` | `/api/rules/:id` | Delete a rule |
-
-### Test API
-
-| Method | Endpoint    | Description                                |
-| ------ | ----------- | ------------------------------------------ |
-| `GET`  | `/api/test` | Rate-limited test endpoint                 |
-| `POST` | `/api/test` | Test endpoint with custom identity headers |
-
-### Breach Logs
-
-| Method   | Endpoint        | Description       |
-| -------- | --------------- | ----------------- |
-| `GET`    | `/api/breaches` | Get breach logs   |
-| `DELETE` | `/api/breaches` | Clear breach logs |
-
-### Notifications
-
-| Method  | Endpoint                      | Description                        |
-| ------- | ----------------------------- | ---------------------------------- |
-| `GET`   | `/api/notifications`          | Get notifications and unread count |
-| `PATCH` | `/api/notifications/:id/read` | Mark notification as read          |
-| `PATCH` | `/api/notifications/read-all` | Mark all notifications as read     |
-
-### Dashboard Statistics
-
-| Method | Endpoint     | Description              |
-| ------ | ------------ | ------------------------ |
-| `GET`  | `/api/stats` | Get dashboard statistics |
-
-### Health Check
-
-| Method | Endpoint      | Description         |
-| ------ | ------------- | ------------------- |
-| `GET`  | `/api/health` | Check server health |
+- Viewing API endpoints
+- Inspecting request models
+- Testing API operations
+- Checking response codes
+- Testing authenticated endpoints
 
 ---
 
-## 🧪 Example: Testing a User Rate Limit
+## 🧪 Verification & Testing
 
-Create a rule:
+The project includes practical verification scenarios for important business rules.
 
-```text
-Name: User Test Limit
-Identity: User
-Period: Minute
-Maximum Requests: 5
-```
+### ✅ Test 1 — Global Exception Handling
 
-Enter:
+Trigger an invalid entity request or an unhandled service error.
+
+Expected:
 
 ```text
-X-User-Id:
-cust_vip_42
+Controlled API error response
++
+Exception logged on the server
 ```
 
-Click:
+### ✅ Test 2 — Stock-Out Validation
+
+Try to remove more stock than currently available.
+
+Example:
 
 ```text
-Generate JWT
+Available Stock: 5
+Stock Out:       10
 ```
 
-The Test API generates a JWT for:
+Expected:
 
 ```text
-cust_vip_42
+400 Bad Request
 ```
 
-Then send 10 requests.
+The inventory quantity remains unchanged.
 
-Expected result:
+### ✅ Test 3 — Low-Stock Indicator
+
+If:
 
 ```text
-Request 1 → 200
-Request 2 → 200
-Request 3 → 200
-Request 4 → 200
-Request 5 → 200
-Request 6 → 429
-Request 7 → 429
-Request 8 → 429
-Request 9 → 429
-Request 10 → 429
+Quantity <= MinimumStockLevel
 ```
 
-The breach is recorded and the notification system is triggered.
-
-You can then inspect:
-
-```text
-Notifications
-      ↓
-Breach Logs
-```
+the product is highlighted on the Dashboard and Inventory page.
 
 ---
 
 ## 📁 Project Structure
 
 ```text
-APIRateLimiter/
+StockFlow/
 │
-├── BusinessRequirements.md
-├── TechnicalApproach.md
-├── UnitTestCases.md
-├── README.md
-├── package.json
+├── Backend/
+│   ├── Controllers/
+│   ├── Services/
+│   ├── Models/
+│   ├── Data/
+│   ├── Middleware/
+│   ├── Migrations/
+│   └── Program.cs
 │
-├── server/
-│   ├── package.json
-│   ├── .env.example
-│   │
+├── Frontend/
 │   ├── src/
-│   │   ├── app.js
-│   │   ├── server.js
-│   │   │
-│   │   ├── middleware/
-│   │   │   └── rateLimiter.js
-│   │   │
-│   │   ├── models/
-│   │   │   ├── Rule.js
-│   │   │   ├── RequestLog.js
-│   │   │   ├── BreachLog.js
-│   │   │   └── Notification.js
-│   │   │
-│   │   ├── routes/
-│   │   │   ├── ruleRoutes.js
-│   │   │   ├── breachRoutes.js
-│   │   │   ├── notificationRoutes.js
-│   │   │   ├── statsRoutes.js
-│   │   │   └── testRoutes.js
-│   │   │
-│   │   ├── services/
-│   │   │   └── notificationService.js
-│   │   │
-│   │   └── utils/
-│   │       └── helpers.js
-│   │
-│   └── tests/
-│       ├── helpers.test.js
-│       ├── rules.test.js
-│       ├── rateLimiter.test.js
-│       └── notification.test.js
+│   │   ├── components/
+│   │   ├── pages/
+│   │   ├── context/
+│   │   └── services/
+│   ├── public/
+│   └── package.json
 │
-└── client/
-    ├── package.json
-    ├── vite.config.js
-    ├── index.html
-    │
-    └── src/
-        ├── App.jsx
-        ├── main.jsx
-        ├── index.css
-        │
-        ├── components/
-        │   ├── Sidebar.jsx
-        │   ├── Header.jsx
-        │   ├── RuleForm.jsx
-        │   └── StatsCard.jsx
-        │
-        ├── pages/
-        │   ├── Dashboard.jsx
-        │   ├── Rules.jsx
-        │   ├── BreachLogs.jsx
-        │   ├── Notifications.jsx
-        │   └── TestAPI.jsx
-        │
-        └── services/
-            └── api.js
+└── README.md
 ```
 
 ---
 
-## 🧠 Key Design Decisions
+## 🚀 Getting Started
 
-### Sliding Window Counter
+### 📋 Prerequisites
 
-Chosen instead of fixed-window rate limiting because fixed windows can allow bursts around window boundaries.
+Install the following:
 
-### Atomic MongoDB Operations
-
-Counters are incremented using atomic MongoDB operations to prevent race conditions when multiple requests arrive concurrently.
-
-### MongoDB TTL Indexes
-
-Expired counters are automatically removed by MongoDB instead of requiring a separate cleanup process.
-
-### Fail Open
-
-If MongoDB becomes unavailable during a rate-limit check, the system allows the request through and logs a warning rather than potentially blocking all API traffic.
-
-### Notification Deduplication
-
-A 5-minute cooldown prevents sustained traffic breaches from generating excessive duplicate notifications.
-
-## These design decisions are documented in the technical approach.
-
-## 🔒 Security Considerations
-
-This project is primarily designed as a rate-limiting system and demonstration application.
-
-Current scope includes:
-
-* JWT-based user identity verification
-* Helmet security headers
-* Configurable environment variables
-* MongoDB-backed counters
-* Optional SMTP notifications
-
-However, some production concerns are intentionally outside the current scope:
-
-* Admin dashboard authentication
-* Distributed rate limiting
-* API key management
-* Multi-tenancy
-* Allowlisting/bypass rules
-* Historical analytics
-
-The current application is designed for a **single-instance deployment**, while MongoDB's centralized counters provide a path toward multi-instance deployments in the future.
+- [.NET 8 SDK](https://dotnet.microsoft.com/download)
+- [Node.js](https://nodejs.org/)
+- SQL Server LocalDB or SQL Server Express
+- Git
 
 ---
 
-## 📈 Future Improvements
+### 1️⃣ Clone the Repository
 
-Potential improvements include:
-
-* Redis-based counter storage
-* Distributed rate limiting across multiple server instances
-* Admin authentication and role-based access control
-* API key-based rate limiting
-* Organization/multi-tenant support
-* Rate-limit allowlists
-* Historical analytics
-* Advanced traffic visualization
-* Message queues for asynchronous notifications
-* More granular rate-limit policies
-* Production authentication and user management
+```bash
+git clone <your-repository-url>
+cd StockFlow
+```
 
 ---
 
-## 🤖 AI-Assisted Development
+### 2️⃣ Set Up the Backend
 
-AI tools were used during development for:
+```bash
+cd Backend
+dotnet restore
+```
 
-* Requirement analysis
-* Architecture design
-* Algorithm selection
-* Code generation
-* Test case design
-* Code review
-* Troubleshooting
+Apply EF Core migrations:
 
-All generated code was reviewed, validated, and tested by the developer.
+```bash
+dotnet ef database update
+```
+
+This creates the `StockFlowDb` database and applies the existing migrations with seed data.
 
 ---
 
-## 📄 Documentation
+### 3️⃣ Run the Backend API
 
-Additional project documentation:
+```bash
+dotnet run
+```
 
-* [`BusinessRequirements.md`](./BusinessRequirements.md) — Business and functional requirements
-* [`TechnicalApproach.md`](./TechnicalApproach.md) — Architecture and technical design
-* [`UnitTestCases.md`](./UnitTestCases.md) — Unit and integration test scenarios
+Backend:
+
+```text
+http://localhost:5045
+```
+
+Swagger:
+
+```text
+http://localhost:5045/swagger
+```
+
+---
+
+### 4️⃣ Run the Frontend
+
+Open a new terminal:
+
+```bash
+cd Frontend
+npm install
+npm run dev
+```
+
+Frontend:
+
+```text
+http://localhost:5173
+```
+
+---
+
+## 🔑 Demo Credentials
+
+Seeded accounts are available for testing both roles.
+
+| Role | Username | Password |
+|---|---|---|
+| 👑 Admin | `admin` | `Admin@123` |
+| 👤 Employee | `employee` | `Employee@123` |
+
+> ⚠️ These credentials are intended for local/demo usage only.
+
+---
+
+## 💡 Key Design Decisions
+
+### 1. Layered Architecture
+
+Business logic is separated from HTTP request handling.
+
+```text
+Controller
+    ↓
+Service
+    ↓
+DbContext
+    ↓
+SQL Server
+```
+
+This keeps controllers lightweight and makes the backend easier to maintain.
+
+### 2. Dependency Injection
+
+ASP.NET Core Dependency Injection is used to provide services and database dependencies where required.
+
+### 3. EF Core + LINQ
+
+Entity Framework Core handles database access while LINQ is used for queries such as:
+
+- Product search
+- Pagination
+- Inventory retrieval
+- Low-stock filtering
+- Stock movement history
+
+### 4. Backend-First Authorization
+
+Although the React UI hides restricted actions, authorization is enforced on the API itself.
+
+This prevents users from bypassing UI restrictions by directly calling endpoints.
+
+### 5. Inventory Integrity
+
+Stock-out operations validate available quantity before modifying inventory, preventing negative stock.
+
+---
+
+## 🔮 Future Improvements
+
+Planned improvements include:
+
+- 🔄 JWT refresh tokens
+- 🔀 Multi-warehouse stock transfers
+- 🗑️ Soft deletes for products and warehouses
+- 📊 Advanced inventory analytics
+- 📈 More detailed reporting
+- 🔎 More advanced inventory filtering
 
 ---
 
 ## 📌 Project Status
 
-**Status: Completed**
+**Status: ✅ Completed**
 
-The system currently supports:
+Current implementation includes:
 
-* ✅ Configurable rate-limit rules
-* ✅ IP-based rate limiting
-* ✅ Domain-based rate limiting
-* ✅ JWT-based user rate limiting
-* ✅ Sliding Window Counter
-* ✅ MongoDB atomic counters
-* ✅ TTL-based cleanup
-* ✅ HTTP 429 enforcement
-* ✅ `Retry-After` responses
-* ✅ Breach logging
-* ✅ In-app notifications
-* ✅ Optional email notifications
-* ✅ JWT token generation and verification
-* ✅ Interactive API testing
-* ✅ Admin dashboard
-* ✅ Automated testing
-* ✅ 65 passing backend tests
+- ✅ JWT authentication
+- ✅ Admin / Employee RBAC
+- ✅ Product CRUD
+- ✅ Warehouse CRUD
+- ✅ Inventory management
+- ✅ Stock-in / stock-out
+- ✅ Low-stock detection
+- ✅ Stock movement history
+- ✅ BCrypt password hashing
+- ✅ EF Core migrations
+- ✅ SQL Server database
+- ✅ Global exception handling
+- ✅ Dependency Injection
+- ✅ Swagger / OpenAPI
+- ✅ React + Vite frontend
 
 ---
 
@@ -950,6 +702,10 @@ The system currently supports:
 
 **Yash Barai**
 
-MCA Student | Full Stack Developer
+MCA Student | Full-Stack Developer
 
-Built as a full-stack backend-focused project to explore **API protection, rate-limiting algorithms, authentication, concurrency, MongoDB atomic operations, and system design**.
+Built as a practical full-stack project to demonstrate **ASP.NET Core Web API, C#, EF Core, SQL Server, React, authentication, authorization, inventory business logic, and clean backend architecture**.
+
+---
+
+⭐ If you found this project useful, consider giving the repository a star!
