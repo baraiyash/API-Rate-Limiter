@@ -1,700 +1,421 @@
-# 📦 StockFlow
+# 🚂 RailEase — CLI Railway Reservation System
 
-A full-stack **Inventory Management System** built with **React + Vite** on the frontend and **ASP.NET Core Web API + Entity Framework Core + SQL Server** on the backend.
+<div align="center">
 
-StockFlow is designed to demonstrate practical backend and full-stack development concepts such as **JWT authentication, role-based authorization, layered architecture, inventory validation, atomic stock operations, audit logging, database constraints, dependency injection, and RESTful API design**.
+### A Role-Based Command Line Java Application for Railway Ticket Booking & Management
 
----
+Book Tickets • Search Trains by City • PNR Status • Waiting List • Admin Control Panel
 
-## 🚀 Features
+![Java](https://img.shields.io/badge/Java-17+-orange?style=for-the-badge&logo=java)
+![MySQL](https://img.shields.io/badge/MySQL-8.x-blue?style=for-the-badge&logo=mysql)
+![JDBC](https://img.shields.io/badge/JDBC-Driver-red?style=for-the-badge)
+![XAMPP](https://img.shields.io/badge/XAMPP-MariaDB-FB7A24?style=for-the-badge&logo=xampp)
+![CLI](https://img.shields.io/badge/Interface-CLI-black?style=for-the-badge)
 
-### 🔐 Authentication & Authorization
-
-- JWT-based stateless authentication
-- BCrypt password hashing
-- Role-based access control with **Admin** and **Employee** roles
-- Backend authorization using `[Authorize]`
-- Admin-only operations protected at the API level
-- JWT stored and attached to requests by Axios on the frontend
-- Unauthorized actions return appropriate `401` / `403` responses
-
-### 📦 Product Management
-
-- Create, view, update, and delete products
-- Unique SKU validation
-- Product search
-- Pagination
-- Minimum stock level configuration
-
-### 🏢 Warehouse Management
-
-- Create, view, update, and delete warehouses
-- Store warehouse location details
-- Manage inventory across multiple warehouses
-
-### 📊 Inventory Management
-
-- View current inventory levels
-- Stock-in operations
-- Stock-out operations
-- Prevent stock from becoming negative
-- Low-stock detection based on minimum stock level
-- Track inventory separately for each product and warehouse
-
-### 📝 Stock Movement History
-
-- Record every stock-in and stock-out operation
-- Store product, warehouse, user, quantity, movement type, and timestamp
-- Preserve historical movement records using restricted delete behavior
-
-### 🛡️ Backend Reliability
-
-- Custom global exception handling middleware
-- Dependency Injection
-- EF Core migrations and database seeding
-- LINQ-based database queries
-- SQL Server constraints and indexes
-- Consistent API error responses
-- Built-in logging using `ILogger`
-
-### 📚 API Documentation
-
-- Swagger / OpenAPI integration
-- Interactive API testing through Swagger UI
-- Clearly separated REST endpoints for authentication, products, warehouses, inventory, and stock movements
+</div>
 
 ---
 
-## 🏗️ Architecture
+## 📖 Overview
+
+**RailEase** is a fully functional **Command Line Interface (CLI)** based Railway Reservation System built using **Core Java** and **MySQL**. It simulates a real-world railway booking system where users can search for trains by city name, book tickets, check PNR status, and cancel bookings — all from the terminal.
+
+The system supports two roles:
+
+* 👨‍💼 **Admin** — Manage stations, trains, and journey schedules
+* 👤 **User** — Search trains, book tickets, manage bookings
+
+---
+
+## ✨ Features
+
+### 👨‍💼 Admin Module
+
+* Secure Admin Login
+* Add & View Railway Stations
+* Add & View Trains with route details
+* Disable / Deactivate Trains
+* Schedule Journeys for specific travel dates
+* View All Journeys with seat availability
+* View All Bookings system-wide with passenger details
+
+### 👤 User Module
+
+* User Registration with SHA-256 password hashing
+* Secure Login with masked password input
+* **Search Trains by City Name** (no need to remember station codes)
+* Smart station resolution — multiple stations in one city shown as a list to choose from
+* Book Tickets for 1–6 passengers in one booking
+* **Automatic CONFIRMED / WAITING LIST** status based on seat availability
+* View My Bookings with train name, date, and status
+* Check PNR Status with full passenger and seat details
+* **Cancel Ticket** — automatically promotes first Waiting List booking to Confirmed
+
+---
+
+## 🏗️ System Architecture
 
 ```text
-                         ┌───────────────────────┐
-                         │      React Client     │
-                         │     Vite + Axios      │
-                         └───────────┬───────────┘
-                                     │
-                           HTTP + JWT Bearer
-                                     │
-                                     ▼
-                    ┌─────────────────────────────┐
-                    │     ASP.NET Core Web API    │
-                    │                             │
-                    │  CORS / Exception Middleware│
-                    │             │               │
-                    │             ▼               │
-                    │       Controllers           │
-                    │             │               │
-                    │             ▼               │
-                    │        Services             │
-                    │     Business Logic          │
-                    │             │               │
-                    │             ▼               │
-                    │        EF Core              │
-                    │         DbContext            │
-                    └─────────────┬───────────────┘
-                                  │
-                                  ▼
-                            ┌─────────────┐
-                            │  SQL Server │
-                            │ StockFlowDb │
-                            └─────────────┘
-```
-
-### 🔄 Request Flow
-
-```text
-Client Request
-     │
-     ▼
-Axios
-     │
-     ▼
-JWT Bearer Token
-     │
-     ▼
-ASP.NET Core Middleware
-     │
-     ├── Exception Handling
-     └── CORS
-     │
-     ▼
-Controller
-     │
-     ├── Authentication / Authorization
-     └── Request Validation
-     │
-     ▼
-Service Layer
-     │
-     ├── Business Rules
-     ├── Inventory Validation
-     ├── LINQ Queries
-     └── Stock Movement Logging
-     │
-     ▼
-EF Core DbContext
-     │
-     ▼
-SQL Server
+┌─────────────────────────────────────┐
+│          CLI (Terminal Input)        │
+└──────────────┬──────────────────────┘
+               │
+               ▼
+┌─────────────────────────────────────┐
+│         Menu Layer                  │
+│  MainMenu → AdminMenu / UserMenu    │
+└──────────────┬──────────────────────┘
+               │
+               ▼
+┌─────────────────────────────────────┐
+│         Service Layer               │
+│  BookingService, TrainService, ...  │
+└──────────────┬──────────────────────┘
+               │
+               ▼
+┌─────────────────────────────────────┐
+│         DAO Layer                   │
+│  BookingDAO, PassengerDAO, ...      │
+└──────────────┬──────────────────────┘
+               │
+               ▼
+┌─────────────────────────────────────┐
+│         MySQL Database              │
+│         (via XAMPP / MariaDB)       │
+└─────────────────────────────────────┘
 ```
 
 ---
 
-## 🛠️ Technology Stack
+## 🛠️ Tech Stack
 
 | Layer | Technology |
 |---|---|
-| Frontend | React |
-| Build Tool | Vite |
-| Frontend Language | JavaScript ES6+ |
-| Routing | React Router DOM |
-| HTTP Client | Axios |
-| Styling | Vanilla CSS |
-| Backend | ASP.NET Core Web API |
-| Language | C# |
-| Framework | .NET 8 |
-| ORM | Entity Framework Core 8 |
-| Database | Microsoft SQL Server |
-| Authentication | JWT Bearer |
-| Password Hashing | BCrypt.Net-Next |
-| API Documentation | Swagger / OpenAPI |
-| Logging | `ILogger` |
+| Language | Java 17+ |
+| Database | MySQL / MariaDB (XAMPP) |
+| DB Driver | MySQL Connector/J 9.x (JDBC) |
+| Password Security | SHA-256 Hashing |
+| Interface | Command Line Interface (CLI) |
+| Build | JAR (executable) |
+| Version Control | Git & GitHub |
 
 ---
 
-## 🗄️ Database Design
-
-StockFlow uses **five main tables** in SQL Server.
-
-```mermaid
-erDiagram
-
-    Users {
-        int Id PK
-        string Username UK
-        string Email UK
-        string PasswordHash
-        string Role
-        datetime CreatedAt
-    }
-
-    Products {
-        int Id PK
-        string Name
-        string SKU UK
-        string Description
-        decimal Price
-        int MinimumStockLevel
-        datetime CreatedAt
-        datetime UpdatedAt
-    }
-
-    Warehouses {
-        int Id PK
-        string Name
-        string Location
-        datetime CreatedAt
-    }
-
-    Inventory {
-        int Id PK
-        int ProductId FK
-        int WarehouseId FK
-        int Quantity
-        datetime LastUpdated
-    }
-
-    StockMovements {
-        int Id PK
-        int ProductId FK
-        int WarehouseId FK
-        int UserId FK
-        int MovementType
-        int Quantity
-        datetime CreatedAt
-    }
-
-    Users ||--o{ StockMovements : records
-    Products ||--o{ Inventory : stores
-    Products ||--o{ StockMovements : traces
-    Warehouses ||--o{ Inventory : houses
-    Warehouses ||--o{ StockMovements : logs
-```
-
-### 🔑 Database Constraints
-
-- **Unique indexes**
-  - `Users.Username`
-  - `Users.Email`
-  - `Products.SKU`
-
-- **Composite unique constraint**
-  - `Inventory(ProductId, WarehouseId)`
-  - Ensures one inventory record exists for a product within a warehouse.
-
-- **Historical integrity**
-  - `StockMovements` uses restricted deletion behavior so historical records are not accidentally orphaned.
-
----
-
-## 🔐 Authentication & RBAC
-
-StockFlow uses **JWT (JSON Web Tokens)** for authentication.
-
-### Authentication Flow
+## 📂 Project Structure
 
 ```text
-Login
-  │
-  ▼
-Validate Username + Password
-  │
-  ▼
-Verify BCrypt Password Hash
-  │
-  ▼
-Generate JWT
-  │
-  ▼
-Return Token + Username + Role
-  │
-  ▼
-Frontend Stores Authentication Data
-  │
-  ▼
-Axios Sends:
-Authorization: Bearer <token>
-```
-
-### 👥 Role Authorization Matrix
-
-| Action | Admin | Employee |
-|---|:---:|:---:|
-| Login | ✅ | ✅ |
-| View Products | ✅ | ✅ |
-| Create / Edit / Delete Products | ✅ | ❌ |
-| View Warehouses | ✅ | ✅ |
-| Create / Edit / Delete Warehouses | ✅ | ❌ |
-| View Inventory | ✅ | ✅ |
-| Stock In | ✅ | ✅ |
-| Stock Out | ✅ | ✅ |
-| View Stock Movement History | ✅ | ✅ |
-| Create User Accounts | ✅ | ❌ |
-
-> **Important:** Frontend role checks only control the UI. The backend remains the final authority for authorization.
-
----
-
-## 📡 API Endpoints
-
-### 🔑 Authentication
-
-| Method | Endpoint | Authorization | Description |
-|---|---|---|---|
-| `POST` | `/api/auth/login` | Public | Validate credentials and return JWT |
-
-### 👤 Users
-
-| Method | Endpoint | Authorization | Description |
-|---|---|---|---|
-| `POST` | `/api/users` | Admin | Create a new user |
-
-### 📦 Products
-
-| Method | Endpoint | Authorization | Description |
-|---|---|---|---|
-| `GET` | `/api/products` | All Users | Get products with search and pagination |
-| `GET` | `/api/products/{id}` | All Users | Get product by ID |
-| `POST` | `/api/products` | Admin | Create a product |
-| `PUT` | `/api/products/{id}` | Admin | Update a product |
-| `DELETE` | `/api/products/{id}` | Admin | Delete a product |
-
-Example search:
-
-```text
-GET /api/products?search=mouse
-```
-
-### 🏢 Warehouses
-
-| Method | Endpoint | Authorization | Description |
-|---|---|---|---|
-| `GET` | `/api/warehouses` | All Users | Get all warehouses |
-| `GET` | `/api/warehouses/{id}` | All Users | Get warehouse by ID |
-| `POST` | `/api/warehouses` | Admin | Create a warehouse |
-| `PUT` | `/api/warehouses/{id}` | Admin | Update a warehouse |
-| `DELETE` | `/api/warehouses/{id}` | Admin | Delete a warehouse |
-
-### 📊 Inventory
-
-| Method | Endpoint | Authorization | Description |
-|---|---|---|---|
-| `GET` | `/api/inventory` | All Users | Get current inventory |
-| `GET` | `/api/inventory/low-stock` | All Users | Get low-stock products |
-| `POST` | `/api/inventory/stock-in` | All Users | Add stock and record movement |
-| `POST` | `/api/inventory/stock-out` | All Users | Remove stock after validation |
-
-### 📝 Stock Movement History
-
-| Method | Endpoint | Authorization | Description |
-|---|---|---|---|
-| `GET` | `/api/stock-movements` | All Users | Get stock movement history |
-
----
-
-## ⚙️ Stock Operations
-
-### 📥 Stock In
-
-```text
-Stock In Request
-      │
-      ▼
-Find Product + Warehouse
-      │
-      ▼
-Increase Inventory Quantity
-      │
-      ▼
-Create StockMovement Record
-      │
-      ▼
-Save Changes
-```
-
-### 📤 Stock Out
-
-StockFlow validates available inventory before removing stock.
-
-```text
-Current Stock = 10
-Requested Stock Out = 15
-
-        ↓
-
-Insufficient Quantity
-
-        ↓
-
-❌ 400 Bad Request
-```
-
-This prevents negative inventory values.
-
-### 📉 Low-Stock Detection
-
-A product is considered low-stock when:
-
-```text
-Current Quantity <= Minimum Stock Level
-```
-
-Low-stock products are highlighted on the Dashboard and Inventory page.
-
----
-
-## 🧾 Stock Movement Audit Trail
-
-Every stock operation records:
-
-```text
-Product
-Warehouse
-User
-Movement Type
-Quantity
-Timestamp
-```
-
-Example:
-
-```text
-Employee → Warehouse A → Laptop → STOCK_IN → +20
-Employee → Warehouse A → Laptop → STOCK_OUT → -5
-```
-
-This provides a basic audit history of inventory changes.
-
----
-
-## 🛡️ Global Exception Handling
-
-StockFlow uses custom exception handling middleware to provide consistent API responses.
-
-Example:
-
-```json
-{
-  "success": false,
-  "message": "An unexpected error occurred."
-}
-```
-
-Detailed exception information is logged using `ILogger`, while the client receives a controlled response.
-
----
-
-## 📚 Swagger API Documentation
-
-Once the backend is running, open:
-
-```text
-http://localhost:5045/swagger
-```
-
-Swagger provides an interactive interface for:
-
-- Viewing API endpoints
-- Inspecting request models
-- Testing API operations
-- Checking response codes
-- Testing authenticated endpoints
-
----
-
-## 🧪 Verification & Testing
-
-The project includes practical verification scenarios for important business rules.
-
-### ✅ Test 1 — Global Exception Handling
-
-Trigger an invalid entity request or an unhandled service error.
-
-Expected:
-
-```text
-Controlled API error response
-+
-Exception logged on the server
-```
-
-### ✅ Test 2 — Stock-Out Validation
-
-Try to remove more stock than currently available.
-
-Example:
-
-```text
-Available Stock: 5
-Stock Out:       10
-```
-
-Expected:
-
-```text
-400 Bad Request
-```
-
-The inventory quantity remains unchanged.
-
-### ✅ Test 3 — Low-Stock Indicator
-
-If:
-
-```text
-Quantity <= MinimumStockLevel
-```
-
-the product is highlighted on the Dashboard and Inventory page.
-
----
-
-## 📁 Project Structure
-
-```text
-StockFlow/
+RailEase/
 │
-├── Backend/
-│   ├── Controllers/
-│   ├── Services/
-│   ├── Models/
-│   ├── Data/
-│   ├── Middleware/
-│   ├── Migrations/
-│   └── Program.cs
+├── src/
+│   ├── config/
+│   │   └── DatabaseConfig.java         # DB credentials
+│   │
+│   ├── database/
+│   │   └── DatabaseConnection.java     # JDBC connection singleton
+│   │
+│   ├── enums/
+│   │   ├── BookingStatus.java          # CONFIRMED, WAITING, CANCELLED
+│   │   ├── Gender.java                 # MALE, FEMALE, OTHER
+│   │   ├── JourneyStatus.java          # SCHEDULED, COMPLETED, CANCELLED
+│   │   ├── PaymentStatus.java          # SUCCESS, FAILED, REFUNDED
+│   │   ├── Role.java                   # ADMIN, USER
+│   │   └── Status.java                 # ACTIVE, INACTIVE
+│   │
+│   ├── model/
+│   │   ├── User.java
+│   │   ├── Train.java
+│   │   ├── Station.java
+│   │   ├── Journey.java
+│   │   ├── Booking.java
+│   │   └── Passenger.java
+│   │
+│   ├── dao/
+│   │   ├── UserDAO.java
+│   │   ├── StationDAO.java
+│   │   ├── TrainDAO.java
+│   │   ├── JourneyDAO.java
+│   │   ├── BookingDAO.java
+│   │   └── PassengerDAO.java
+│   │
+│   ├── service/
+│   │   ├── UserService.java
+│   │   ├── StationService.java
+│   │   ├── TrainService.java
+│   │   ├── JourneyService.java
+│   │   └── BookingService.java
+│   │
+│   ├── menu/
+│   │   ├── MainMenu.java               # Entry point menu
+│   │   ├── AdminMenu.java              # Admin operations
+│   │   └── UserMenu.java              # User operations
+│   │
+│   ├── util/
+│   │   ├── InputValidator.java         # Safe int/double/password input
+│   │   ├── DateUtil.java               # Date parsing & reading
+│   │   ├── PNRGenerator.java           # Unique PNR generator
+│   │   └── PasswordUtil.java           # SHA-256 hashing
+│   │
+│   └── main/
+│       └── Main.java                   # Application entry point
 │
-├── Frontend/
-│   ├── src/
-│   │   ├── components/
-│   │   ├── pages/
-│   │   ├── context/
-│   │   └── services/
-│   ├── public/
-│   └── package.json
+├── lib/
+│   └── mysql-connector-j-9.7.0.jar    # JDBC driver
 │
+├── seed_data.sql                       # Initial DB + sample stations & trains
+├── seed_cities.sql                     # Additional city data
+├── RailEase.jar                        # Compiled runnable JAR
+├── manifest.txt                        # JAR manifest
+├── .gitignore
 └── README.md
 ```
 
 ---
 
-## 🚀 Getting Started
+## 🗄️ Database Schema
 
-### 📋 Prerequisites
+```text
+┌──────────┐     ┌──────────┐     ┌──────────┐
+│  users   │     │  trains  │     │ stations │
+├──────────┤     ├──────────┤     ├──────────┤
+│ user_id  │     │ train_id │     │station_id│
+│ full_name│     │train_num │     │ code     │
+│ email    │     │ name     │     │ name     │
+│ phone    │     │ src_stn  │◄────│ city     │
+│ password │     │ dst_stn  │     │ state    │
+│ role     │     │ dept_time│     │ status   │
+│ status   │     │ arrv_time│     └──────────┘
+└──────────┘     │ seats    │
+                 │ fare     │
+                 └────┬─────┘
+                      │
+               ┌──────▼──────┐
+               │  journeys   │
+               ├─────────────┤
+               │ journey_id  │
+               │ train_id    │
+               │ travel_date │
+               │ avail_seats │
+               │ status      │
+               └──────┬──────┘
+                      │
+               ┌──────▼──────┐     ┌────────────┐
+               │  bookings   │     │ passengers │
+               ├─────────────┤     ├────────────┤
+               │ booking_id  │◄────│passenger_id│
+               │ pnr         │     │ booking_id │
+               │ user_id     │     │ name       │
+               │ journey_id  │     │ age        │
+               │ amount_paid │     │ gender     │
+               │ status      │     │ coach      │
+               │ waiting_no  │     │ seat_no    │
+               └─────────────┘     └────────────┘
+```
 
-Install the following:
+---
 
-- [.NET 8 SDK](https://dotnet.microsoft.com/download)
-- [Node.js](https://nodejs.org/)
-- SQL Server LocalDB or SQL Server Express
-- Git
+## 🚉 Available Train Network
+
+| Train No. | Train Name | From | To | Fare |
+|---|---|---|---|---|
+| 11301 | Udyan Express | Mumbai | Pune | ₹250 |
+| 12015 | Ajmer Shatabdi Express | New Delhi | Jaipur | ₹450 |
+| 12477 | Mumbai Surat Express | Mumbai | Surat | ₹300 |
+| 12478 | Surat Mumbai Express | Surat | Mumbai | ₹300 |
+| 12531 | Delhi Lucknow Shatabdi | New Delhi | Lucknow | ₹550 |
+| 12532 | Lucknow Shatabdi | Lucknow | New Delhi | ₹550 |
+| 12915 | Ashram Express | Ahmedabad | New Delhi | ₹750 |
+| 12951 | Mumbai Rajdhani Express | New Delhi | Mumbai | ₹1500 |
+| 19115 | Ahmedabad Rajkot Express | Ahmedabad | Rajkot | ₹200 |
+| 19116 | Rajkot Ahmedabad Express | Rajkot | Ahmedabad | ₹200 |
+
+---
+
+## ⚙️ Installation & Setup
+
+### Prerequisites
+
+* Java 17 or higher installed
+* XAMPP installed with MySQL/MariaDB running
+* Git (optional)
 
 ---
 
 ### 1️⃣ Clone the Repository
 
 ```bash
-git clone <your-repository-url>
-cd StockFlow
+git clone https://github.com/baraiyash/RailEase.git
+cd RailEase
+```
+
+### 2️⃣ Setup the Database
+
+1. Open **phpMyAdmin** → `http://localhost/phpmyadmin`
+2. Create a new database named `railease`
+3. Import `seed_data.sql` → sets up tables, stations, and initial trains
+4. Import `seed_cities.sql` → adds remaining cities and trains
+
+Or run via terminal (XAMPP must be running):
+```bash
+"C:\xampp\mysql\bin\mysql.exe" -u root -e "source seed_data.sql"
+"C:\xampp\mysql\bin\mysql.exe" -u root -e "source seed_cities.sql"
+```
+
+### 3️⃣ Create Admin User
+
+Run this in phpMyAdmin or MySQL terminal:
+```sql
+INSERT INTO users (full_name, email, phone, password, role, status)
+VALUES (
+  'Admin',
+  'admin@railease.com',
+  '9999999999',
+  SHA2('admin123', 256),
+  'ADMIN',
+  'ACTIVE'
+);
+```
+
+### 4️⃣ Configure Database Credentials
+
+Edit [`src/config/DatabaseConfig.java`](src/config/DatabaseConfig.java) if your MySQL credentials differ:
+```java
+public static final String URL      = "jdbc:mysql://localhost:3306/railease";
+public static final String USERNAME = "root";
+public static final String PASSWORD = "";
+```
+
+### 5️⃣ Run the Application
+
+**Option A — Use the prebuilt JAR (recommended):**
+```bash
+java -jar RailEase.jar
+```
+
+**Option B — Compile and run from source:**
+```bash
+# Compile
+javac -cp "lib\mysql-connector-j-9.7.0.jar" -sourcepath src -d out src\main\Main.java src\menu\*.java src\dao\*.java src\service\*.java src\model\*.java src\enums\*.java src\util\*.java src\database\*.java src\config\*.java
+
+# Run
+java -cp "out;lib\mysql-connector-j-9.7.0.jar" main.Main
 ```
 
 ---
 
-### 2️⃣ Set Up the Backend
+## 🔐 User Roles & Access
 
-```bash
-cd Backend
-dotnet restore
-```
+| Role | Access |
+|---|---|
+| **Admin** | Add/View Stations, Add/View/Disable Trains, Schedule Journeys, View All Bookings |
+| **User** | Register/Login, Search Trains by City, Book Tickets (1–6 passengers), View Bookings, Check PNR, Cancel Tickets |
 
-Apply EF Core migrations:
+### Demo Credentials
 
-```bash
-dotnet ef database update
-```
-
-This creates the `StockFlowDb` database and applies the existing migrations with seed data.
-
----
-
-### 3️⃣ Run the Backend API
-
-```bash
-dotnet run
-```
-
-Backend:
-
-```text
-http://localhost:5045
-```
-
-Swagger:
-
-```text
-http://localhost:5045/swagger
-```
-
----
-
-### 4️⃣ Run the Frontend
-
-Open a new terminal:
-
-```bash
-cd Frontend
-npm install
-npm run dev
-```
-
-Frontend:
-
-```text
-http://localhost:5173
-```
-
----
-
-## 🔑 Demo Credentials
-
-Seeded accounts are available for testing both roles.
-
-| Role | Username | Password |
+| Role | Email | Password |
 |---|---|---|
-| 👑 Admin | `admin` | `Admin@123` |
-| 👤 Employee | `employee` | `Employee@123` |
-
-> ⚠️ These credentials are intended for local/demo usage only.
+| Admin | `admin@railease.com` | `admin123` |
+| User | Register via app | Your choice |
 
 ---
 
-## 💡 Key Design Decisions
-
-### 1. Layered Architecture
-
-Business logic is separated from HTTP request handling.
+## 💻 Application Flow
 
 ```text
-Controller
-    ↓
-Service
-    ↓
-DbContext
-    ↓
-SQL Server
+Start App
+    │
+    ├── Register (New User)
+    │       └── Enter Name, Email, Phone, Password
+    │
+    └── Login
+            ├── Admin Login
+            │       ├── Add Station
+            │       ├── View Stations
+            │       ├── Add Train
+            │       ├── View Trains
+            │       ├── Disable Train
+            │       ├── Schedule Journey  ← Assign a travel date to a train
+            │       ├── View Journeys
+            │       └── View All Bookings
+            │
+            └── User Login
+                    ├── Search Trains     ← Type city names (e.g. "Mumbai", "Jaipur")
+                    ├── Book Ticket       ← City → Train list → Date → Passengers → Confirm
+                    ├── My Bookings       ← See all your bookings
+                    ├── Check PNR         ← Full details with seat numbers
+                    └── Cancel Ticket     ← Auto-promotes Waiting List
 ```
 
-This keeps controllers lightweight and makes the backend easier to maintain.
+---
 
-### 2. Dependency Injection
+## 🎯 Key Highlights
 
-ASP.NET Core Dependency Injection is used to provide services and database dependencies where required.
+### 🏙️ City-Based Train Search
+Users type the **city name** instead of remembering station codes. The system automatically maps cities to stations. If a city has multiple stations, a numbered list is shown.
 
-### 3. EF Core + LINQ
+```
+From City : Mumbai
+To City   : Jaipur
 
-Entity Framework Core handles database access while LINQ is used for queries such as:
+Source Station : Mumbai Central (BCT), Mumbai
+No trains found from Mumbai to Jaipur.
+```
 
-- Product search
-- Pagination
-- Inventory retrieval
-- Low-stock filtering
-- Stock movement history
+### 🎟️ Automatic Waiting List
+When no seats are available, the booking is automatically placed in the Waiting List with a queue number.
 
-### 4. Backend-First Authorization
+### ♻️ Auto-Promotion on Cancellation
+When a confirmed booking is cancelled, the first Waiting List booking is **automatically promoted to Confirmed** and seats are assigned.
 
-Although the React UI hides restricted actions, authorization is enforced on the API itself.
+### 🔐 Password Security
+* Passwords are hashed with **SHA-256** before storing in the database
+* Password input is **masked** in the terminal using `System.console().readPassword()`
 
-This prevents users from bypassing UI restrictions by directly calling endpoints.
-
-### 5. Inventory Integrity
-
-Stock-out operations validate available quantity before modifying inventory, preventing negative stock.
+### 🏷️ Unique PNR Generation
+Each booking gets a unique PNR like `PNR172089473821234` using timestamp + random suffix.
 
 ---
 
-## 🔮 Future Improvements
+## 📚 Core Modules
 
-Planned improvements include:
-
-- 🔄 JWT refresh tokens
-- 🔀 Multi-warehouse stock transfers
-- 🗑️ Soft deletes for products and warehouses
-- 📊 Advanced inventory analytics
-- 📈 More detailed reporting
-- 🔎 More advanced inventory filtering
+* Authentication & Authorization (Role-Based)
+* Station Management
+* Train Management
+* Journey Scheduling
+* Ticket Booking (Confirmed / Waiting List)
+* PNR Tracking
+* Booking Cancellation with Waiting List Promotion
+* Passenger Management with Seat Assignment
+* Admin Dashboard
 
 ---
 
-## 📌 Project Status
+## 🚀 Future Enhancements
 
-**Status: ✅ Completed**
+* 🔢 OTP-Based Login / Email Verification
+* 🖨️ Print Ticket to `.txt` File
+* 💳 Payment Gateway Simulation
+* 📊 Admin Reports & Statistics
+* 🔄 Re-order Waiting List on Cancellation
+* 📱 Convert to Spring Boot REST API
+* 🌐 Web Frontend (React) Integration
+* 🔔 Email Notifications on Booking / Cancellation
 
-Current implementation includes:
+---
 
-- ✅ JWT authentication
-- ✅ Admin / Employee RBAC
-- ✅ Product CRUD
-- ✅ Warehouse CRUD
-- ✅ Inventory management
-- ✅ Stock-in / stock-out
-- ✅ Low-stock detection
-- ✅ Stock movement history
-- ✅ BCrypt password hashing
-- ✅ EF Core migrations
-- ✅ SQL Server database
-- ✅ Global exception handling
-- ✅ Dependency Injection
-- ✅ Swagger / OpenAPI
-- ✅ React + Vite frontend
+## 🧠 Key Learnings
+
+Through this project, I gained hands-on experience in:
+
+* Core Java Development & OOP Principles
+* JDBC & MySQL Database Integration
+* Layered Architecture Design (Menu → Service → DAO → Model)
+* SQL Query Design with PreparedStatements (SQL Injection Prevention)
+* Password Hashing using SHA-256 (`MessageDigest`)
+* Waiting List Queue Logic & Auto-Promotion
+* JAR Packaging & Deployment (Fat/Uber JAR)
+* Git & GitHub Version Control
+* DB Schema Design (Normalization, Foreign Keys, Constraints)
+* CLI Application Design & User Experience
 
 ---
 
@@ -702,10 +423,16 @@ Current implementation includes:
 
 **Yash Barai**
 
-MCA Student | Full-Stack Developer
-
-Built as a practical full-stack project to demonstrate **ASP.NET Core Web API, C#, EF Core, SQL Server, React, authentication, authorization, inventory business logic, and clean backend architecture**.
+* GitHub: [https://github.com/baraiyash](https://github.com/baraiyash)
 
 ---
 
-⭐ If you found this project useful, consider giving the repository a star!
+## ⭐ Support
+
+If you found this project useful, please give it a ⭐ on GitHub!
+
+---
+
+## 📜 License
+
+This project is developed for educational and learning purposes.
